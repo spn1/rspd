@@ -6,6 +6,11 @@ struct TokenResponse {
     access_token: String,
 }
 
+#[derive(Deserialize, Debug)]
+struct ApiResponse {
+    name: String,
+}
+
 /// Gets an access token for the application and user account from reddit API
 async fn get_access_token(
     client_id: &str,
@@ -35,9 +40,24 @@ async fn get_access_token(
     Ok(response.access_token)
 }
 
+/// Gets user information using an access token
+async fn get_user_info(access_token: &str) -> Result<ApiResponse, Error> {
+    let url = "https://oauth.reddit.com/api/v1/me";
+    let client = reqwest::Client::new();
+
+    let request = client
+        .get(url)
+        .header(USER_AGENT, "rspd-script/0.1 by neckbird")
+        .bearer_auth(access_token);
+
+    let response = request.send().await?;
+    let json = response.json::<ApiResponse>().await?;
+
+    Ok(json)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Get Variables
     let client_id = std::env::var("REDDIT_CLIENT_ID").expect("Missing REDDIT_CLIENT_ID");
     let client_secret =
         std::env::var("REDDIT_CLIENT_SECRET").expect("Missing REDDIT_CLIENT_SECRET");
@@ -45,8 +65,9 @@ async fn main() -> Result<(), Error> {
     let password = std::env::var("REDDIT_PASSWORD").expect("Missing REDDIT_PASSWORD");
 
     let access_token = get_access_token(&client_id, &client_secret, &username, &password).await?;
-    // Print the body
-    println!("{}", access_token);
+    let user_info = get_user_info(&access_token).await?;
+
+    println!("{}", user_info.name);
 
     Ok(())
 }
