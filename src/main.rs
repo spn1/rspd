@@ -1,14 +1,32 @@
 use reqwest::{Error, header::USER_AGENT};
 use serde::Deserialize;
+use serde_json::Value;
 
 #[derive(Deserialize, Debug)]
 struct TokenResponse {
     access_token: String,
 }
 
+/// Reddit's "envelope" that contains data responses
 #[derive(Deserialize, Debug)]
-struct ApiResponse {
-    name: String,
+struct Listing<T> {
+    data: ListingData<T>,
+}
+
+/// The data returned, with pagination fields
+#[derive(Deserialize, Debug)]
+struct ListingData<T> {
+    after: Option<String>,
+    before: Option<String>,
+    children: Vec<Thing<T>>,
+}
+
+/// The data
+#[derive(Deserialize, Debug)]
+struct Thing<T> {
+    /// t3 = link/post, t1 = comment
+    kind: String,
+    data: T,
 }
 
 /// Gets an access token for the application and user account from reddit API
@@ -41,19 +59,60 @@ async fn get_access_token(
 }
 
 /// Gets user information using an access token
-async fn get_user_info(access_token: &str) -> Result<ApiResponse, Error> {
-    let url = "https://oauth.reddit.com/api/v1/me";
+async fn get_saved_posts(access_token: &str, username: &str) -> Result<Listing<Value>, Error> {
+    let url = format!("https://oauth.reddit.com/user/{username}/saved?limit=10");
     let client = reqwest::Client::new();
 
-    let request = client
+    let response = client
         .get(url)
         .header(USER_AGENT, "rspd-script/0.1 by neckbird")
-        .bearer_auth(access_token);
+        .bearer_auth(access_token)
+        .send()
+        .await?;
 
-    let response = request.send().await?;
-    let json = response.json::<ApiResponse>().await?;
+    let listing = response.json::<Listing<Value>>().await?;
 
-    Ok(json)
+    Ok(listing)
+}
+
+fn debug_posts(posts: &Listing<Value>) {
+    for child in &posts.data.children {
+        match child.kind.as_str() {
+            // Post / Link
+            "t3" => {
+                let id = child.data.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                let title = child
+                    .data
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let subreddit = child
+                    .data
+                    .get("subreddit")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                println!("POST t3 id={} subreddit={} title={}", id, subreddit, title);
+            }
+            // Comment
+            "t1" => {
+                let id = child.data.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                let body = child
+                    .data
+                    .get("body")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let subreddit = child
+                    .data
+                    .get("subreddit")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                println!("POST t3 id={} subreddit={} body={}", id, subreddit, body);
+            }
+            other => {
+                println!("Other kind={}", other)
+            }
+        }
+    }
 }
 
 #[tokio::main]
@@ -65,9 +124,9 @@ async fn main() -> Result<(), Error> {
     let password = std::env::var("REDDIT_PASSWORD").expect("Missing REDDIT_PASSWORD");
 
     let access_token = get_access_token(&client_id, &client_secret, &username, &password).await?;
-    let user_info = get_user_info(&access_token).await?;
+    let saved_posts = get_saved_posts(&access_token, &username).await?;
 
-    println!("{}", user_info.name);
+    debug_posts(&saved_posts);
 
     Ok(())
 }
