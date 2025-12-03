@@ -1,33 +1,12 @@
+mod models;
+mod reddit_client;
+
 use reqwest::{Error, header::USER_AGENT};
-use serde::Deserialize;
 use serde_json::Value;
 
-#[derive(Deserialize, Debug)]
-struct TokenResponse {
-    access_token: String,
-}
+use models::{Listing, TokenResponse};
 
-/// Reddit's "envelope" that contains data responses
-#[derive(Deserialize, Debug)]
-struct Listing<T> {
-    data: ListingData<T>,
-}
-
-/// The data returned, with pagination fields
-#[derive(Deserialize, Debug)]
-struct ListingData<T> {
-    after: Option<String>,
-    before: Option<String>,
-    children: Vec<Thing<T>>,
-}
-
-/// The data
-#[derive(Deserialize, Debug)]
-struct Thing<T> {
-    /// t3 = link/post, t1 = comment
-    kind: String,
-    data: T,
-}
+use crate::reddit_client::RedditClient;
 
 /// Gets an access token for the application and user account from reddit API
 async fn get_access_token(
@@ -56,23 +35,6 @@ async fn get_access_token(
         .await?;
 
     Ok(response.access_token)
-}
-
-/// Gets user information using an access token
-async fn get_saved_posts(access_token: &str, username: &str) -> Result<Listing<Value>, Error> {
-    let url = format!("https://oauth.reddit.com/user/{username}/saved?limit=10");
-    let client = reqwest::Client::new();
-
-    let response = client
-        .get(url)
-        .header(USER_AGENT, "rspd-script/0.1 by neckbird")
-        .bearer_auth(access_token)
-        .send()
-        .await?;
-
-    let listing = response.json::<Listing<Value>>().await?;
-
-    Ok(listing)
 }
 
 fn debug_posts(posts: &Listing<Value>) {
@@ -124,7 +86,10 @@ async fn main() -> Result<(), Error> {
     let password = std::env::var("REDDIT_PASSWORD").expect("Missing REDDIT_PASSWORD");
 
     let access_token = get_access_token(&client_id, &client_secret, &username, &password).await?;
-    let saved_posts = get_saved_posts(&access_token, &username).await?;
+
+    let client = reqwest::Client::new();
+    let reddit_client = RedditClient::new(client, access_token, username);
+    let saved_posts = reddit_client.get_saved_posts().await?;
 
     debug_posts(&saved_posts);
 
