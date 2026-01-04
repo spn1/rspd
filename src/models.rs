@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Debug)]
 pub struct TokenResponse {
@@ -6,23 +6,37 @@ pub struct TokenResponse {
 }
 
 /// Reddit's "envelope" that contains data responses
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Listing<T> {
     pub data: ListingData<T>,
 }
 
 /// The data returned, with pagination fields
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ListingData<T> {
     after: Option<String>,
     before: Option<String>,
     pub children: Vec<Thing<T>>,
 }
 
-/// The data
-#[derive(Deserialize, Debug)]
+/// The saved thing, whether it is a post or comment.
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Thing<T> {
     /// t3 = link/post, t1 = comment
     pub kind: String,
     pub data: T,
+}
+
+/// The content of the post.
+#[derive(Deserialize, Debug)]
+pub struct SavedPost {
+    pub id: String,
+    pub name: String,
+    pub title: String,
+    pub subreddit: String,
+    pub url: String,
+    pub is_gallery: Option<bool>,
+    pub permalink: String,
+    pub created_utc: f64,
+    pub is_self: bool,
 }

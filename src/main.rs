@@ -1,12 +1,15 @@
+mod downloader;
 mod models;
 mod reddit_client;
 
-use reqwest::{Error, header::USER_AGENT};
-use serde_json::Value;
+use anyhow::Error;
+use std::path::Path;
 
-use models::{Listing, TokenResponse};
+use reqwest::header::USER_AGENT;
 
-use crate::reddit_client::RedditClient;
+use downloader::save_post;
+use models::{SavedPost, TokenResponse};
+use reddit_client::RedditClient;
 
 /// Gets an access token for the application and user account from reddit API
 async fn get_access_token(
@@ -37,44 +40,14 @@ async fn get_access_token(
     Ok(response.access_token)
 }
 
-fn debug_posts(posts: &Listing<Value>) {
-    for child in &posts.data.children {
-        match child.kind.as_str() {
-            // Post / Link
-            "t3" => {
-                let id = child.data.get("id").and_then(|v| v.as_str()).unwrap_or("");
-                let title = child
-                    .data
-                    .get("title")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let subreddit = child
-                    .data
-                    .get("subreddit")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                println!("POST t3 id={} subreddit={} title={}", id, subreddit, title);
-            }
-            // Comment
-            "t1" => {
-                let id = child.data.get("id").and_then(|v| v.as_str()).unwrap_or("");
-                let body = child
-                    .data
-                    .get("body")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let subreddit = child
-                    .data
-                    .get("subreddit")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                println!("POST t3 id={} subreddit={} body={}", id, subreddit, body);
-            }
-            other => {
-                println!("Other kind={}", other)
-            }
-        }
-    }
+fn debug_posts(posts: &Vec<SavedPost>) {
+    println!("{:?}", posts);
+    // for post in posts.into_iter() {
+    //     println!(
+    //         "POST t3 id={} subreddit={} title={}",
+    //         post.id, post.subreddit, post.title
+    //     );
+    // }
 }
 
 #[tokio::main]
@@ -92,6 +65,12 @@ async fn main() -> Result<(), Error> {
     let saved_posts = reddit_client.get_saved_posts().await?;
 
     debug_posts(&saved_posts);
+
+    save_post(
+        saved_posts.get(0).expect("No saved post found"),
+        Path::new("."),
+    )
+    .await?;
 
     Ok(())
 }
