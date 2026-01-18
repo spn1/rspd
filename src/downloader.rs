@@ -25,8 +25,25 @@ pub async fn save_post(post: &SavedPost, base_output_path: &Path) -> Result<(), 
 
     if post.is_gallery == Some(true) {
         handle_gallery(post, target_dir).await?;
+    } else if let Some("hosted:video") = post.post_hint.as_deref() {
+        handle_video(post, target_dir).await?;
     } else {
         handle_image(post, target_dir).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn handle_video(post: &SavedPost, target_dir: PathBuf) -> Result<(), Error> {
+    if let Some(video_info) = post
+        .secure_media
+        .as_ref()
+        .and_then((|sm| sm.get("reddit_video")))
+    {
+        if let Some(fallback_url) = video_info.get("fallback_url").and_then(|u| u.as_str()) {
+            let media_filename = format!("{}.mp4", post.id);
+            download_file(fallback_url, &target_dir.join(media_filename)).await?;
+        }
     }
 
     Ok(())
