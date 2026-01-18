@@ -3,6 +3,7 @@ use serde_json::Value;
 
 use crate::models::{Listing, SavedPost};
 
+/// A client through which posts are requested
 pub struct RedditClient {
     pub client: Client,
     pub token: String,

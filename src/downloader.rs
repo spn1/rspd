@@ -3,8 +3,10 @@ use anyhow::Error;
 use sanitize_filename::sanitize;
 use std::path::{Path, PathBuf};
 
+/// Supported file extensions for images.
 const SUPPORTED_IMAGE_EXTENSIONS: [&str; 5] = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
+/// Saves a list of posts to local directories
 pub async fn save_posts(posts: &Vec<SavedPost>) -> Result<(), Error> {
     for post in posts.iter() {
         if post.is_self {
@@ -17,6 +19,7 @@ pub async fn save_posts(posts: &Vec<SavedPost>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Saves a single post to a local directory
 pub async fn save_post(post: &SavedPost, base_output_path: &Path) -> Result<(), Error> {
     let subreddit_folder_name = sanitize(&post.subreddit);
     let target_dir = base_output_path.join(subreddit_folder_name);
@@ -34,6 +37,7 @@ pub async fn save_post(post: &SavedPost, base_output_path: &Path) -> Result<(), 
     Ok(())
 }
 
+/// Handles download logic when post is a single video
 pub async fn handle_video(post: &SavedPost, target_dir: PathBuf) -> Result<(), Error> {
     if let Some(video_info) = post
         .secure_media
@@ -49,6 +53,7 @@ pub async fn handle_video(post: &SavedPost, target_dir: PathBuf) -> Result<(), E
     Ok(())
 }
 
+/// Handles download logic when post is a gallery of images.
 pub async fn handle_gallery(post: &SavedPost, target_dir: PathBuf) -> Result<(), Error> {
     if let Some(media_meta) = &post.media_metadata {
         if let Some(items) = media_meta.as_object() {
@@ -75,6 +80,7 @@ pub async fn handle_gallery(post: &SavedPost, target_dir: PathBuf) -> Result<(),
     Ok(())
 }
 
+/// Handles download logic when post is a single image.
 pub async fn handle_image(post: &SavedPost, target_dir: PathBuf) -> Result<(), Error> {
     let is_direct_image = SUPPORTED_IMAGE_EXTENSIONS
         .iter()
@@ -90,6 +96,7 @@ pub async fn handle_image(post: &SavedPost, target_dir: PathBuf) -> Result<(), E
     Ok(())
 }
 
+/// Downloads a file from the given URL and saves it to the given path.
 pub async fn download_file(url: &str, path: &Path) -> Result<(), Error> {
     let image_response = reqwest::get(url).await?;
 
@@ -107,6 +114,7 @@ pub async fn download_file(url: &str, path: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+/// Returns a name for a saved post, composed of the post ID and the appropriate extension.
 pub fn get_filename(post: &SavedPost) -> String {
     let extension = Path::new(&post.url)
         .extension()

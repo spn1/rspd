@@ -32,15 +32,11 @@ pub struct Thing<T> {
 #[derive(Deserialize, Debug)]
 pub struct SavedPost {
     pub id: String,
-    pub name: String,
-    pub title: String,
     pub subreddit: String,
     pub url: String,
     pub is_gallery: Option<bool>,
     pub post_hint: Option<String>,
     pub media_metadata: Option<Value>,
     pub secure_media: Option<Value>, // videos
-    pub permalink: String,
-    pub created_utc: f64,
     pub is_self: bool,
 }
