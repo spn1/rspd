@@ -34,7 +34,6 @@ impl RedditClient {
             .await?;
 
         let listing = response.json::<Listing<Value>>().await?;
-        println!("{}", serde_json::to_string_pretty(&listing).unwrap());
 
         let mut posts = Vec::new();
         for child in listing.data.children {

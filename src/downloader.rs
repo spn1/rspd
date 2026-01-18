@@ -5,6 +5,18 @@ use std::path::Path;
 
 const SUPPORTED_EXTENSIONS: [&str; 5] = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
+pub async fn save_posts(posts: &Vec<SavedPost>) -> Result<(), Error> {
+    for post in posts.iter() {
+        if post.is_self {
+            println!("{} is self post, skipping", post.id);
+        } else {
+            save_post(post, Path::new("saved")).await?;
+        }
+    }
+
+    Ok(())
+}
+
 pub async fn save_post(post: &SavedPost, base_output_path: &Path) -> Result<(), Error> {
     let subreddit_folder_name = sanitize(&post.subreddit);
     let target_dir = base_output_path.join(subreddit_folder_name);

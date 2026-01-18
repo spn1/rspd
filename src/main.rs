@@ -3,11 +3,10 @@ mod models;
 mod reddit_client;
 
 use anyhow::Error;
-use std::path::Path;
 
 use reqwest::header::USER_AGENT;
 
-use downloader::save_post;
+use downloader::save_posts;
 use models::{SavedPost, TokenResponse};
 use reddit_client::RedditClient;
 
@@ -42,12 +41,6 @@ async fn get_access_token(
 
 fn debug_posts(posts: &Vec<SavedPost>) {
     println!("{:?}", posts);
-    // for post in posts.into_iter() {
-    //     println!(
-    //         "POST t3 id={} subreddit={} title={}",
-    //         post.id, post.subreddit, post.title
-    //     );
-    // }
 }
 
 #[tokio::main]
@@ -66,11 +59,7 @@ async fn main() -> Result<(), Error> {
 
     debug_posts(&saved_posts);
 
-    save_post(
-        saved_posts.get(0).expect("No saved post found"),
-        Path::new("."),
-    )
-    .await?;
+    save_posts(&saved_posts).await?;
 
     Ok(())
 }
