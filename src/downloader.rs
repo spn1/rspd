@@ -1,9 +1,9 @@
 use crate::models::SavedPost;
 use anyhow::Error;
 use sanitize_filename::sanitize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-const SUPPORTED_EXTENSIONS: [&str; 5] = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+const SUPPORTED_IMAGE_EXTENSIONS: [&str; 5] = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
 pub async fn save_posts(posts: &Vec<SavedPost>) -> Result<(), Error> {
     for post in posts.iter() {
@@ -23,28 +23,78 @@ pub async fn save_post(post: &SavedPost, base_output_path: &Path) -> Result<(), 
 
     tokio::fs::create_dir_all(&target_dir).await?;
 
-    if post.is_self {
-        println!("{} is self post, skipping", post.id);
+    if post.is_gallery == Some(true) {
+        handle_gallery(post, target_dir).await?;
     } else {
-        let is_direct_image = SUPPORTED_EXTENSIONS
-            .iter()
-            .any(|ext| post.url.ends_with(ext));
+        handle_image(post, target_dir).await?;
+    }
 
-        if is_direct_image {
-            let extension = Path::new(&post.url)
-                .extension()
-                .and_then(|s| s.to_str())
-                .unwrap_or("jpg");
+    Ok(())
+}
 
-            let filename = format!("{}.{}", post.id, extension);
-            let path = target_dir.join(filename);
+pub async fn handle_gallery(post: &SavedPost, target_dir: PathBuf) -> Result<(), Error> {
+    if let Some(media_meta) = &post.media_metadata {
+        if let Some(items) = media_meta.as_object() {
+            let mut count = 1;
+            for (_media_id, item_data) in items {
+                if let Some(item_url) = item_data.get("s").and_then(|s| s.get("u")) {
+                    if let Some(item_url_str) = item_url.as_str() {
+                        let clean_url = item_url_str.replace("&amp;", "&");
+                        let extension = Path::new(&clean_url)
+                            .extension()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("jpg");
 
-            let image_response = reqwest::get(&post.url).await?;
-            let bytes = image_response.bytes().await?;
-            tokio::fs::write(path, bytes).await?;
-            println!("Downloaded: {}", post.id);
+                        let media_filename = format!("{}_gallery_{}.{}", post.id, count, extension);
+                        download_file(&clean_url, &target_dir.join(media_filename)).await?;
+                        println!("Downloaded gallery image {} for post {}", count, post.id);
+                        count += 1;
+                    }
+                }
+            }
         }
     }
 
     Ok(())
+}
+
+pub async fn handle_image(post: &SavedPost, target_dir: PathBuf) -> Result<(), Error> {
+    let is_direct_image = SUPPORTED_IMAGE_EXTENSIONS
+        .iter()
+        .any(|ext| post.url.ends_with(ext));
+
+    if is_direct_image {
+        let filename = get_filename(post);
+        let path = target_dir.join(filename);
+        download_file(&post.url, &path).await?;
+        println!("Downloaded: {}", post.id);
+    }
+
+    Ok(())
+}
+
+pub async fn download_file(url: &str, path: &Path) -> Result<(), Error> {
+    let image_response = reqwest::get(url).await?;
+
+    if !image_response.status().is_success() {
+        return Err(anyhow::anyhow!(
+            "Failed to download from {}: status {}",
+            url,
+            image_response.status()
+        ));
+    }
+
+    let bytes = image_response.bytes().await?;
+    tokio::fs::write(path, bytes).await?;
+
+    Ok(())
+}
+
+pub fn get_filename(post: &SavedPost) -> String {
+    let extension = Path::new(&post.url)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("jpg");
+
+    format!("{}.{}", post.id, extension)
 }

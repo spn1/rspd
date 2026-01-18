@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Deserialize, Debug)]
 pub struct TokenResponse {
@@ -36,6 +37,9 @@ pub struct SavedPost {
     pub subreddit: String,
     pub url: String,
     pub is_gallery: Option<bool>,
+    pub post_hint: Option<String>,
+    pub media_metadata: Option<Value>,
+    pub secure_media: Option<Value>, // videos
     pub permalink: String,
     pub created_utc: f64,
     pub is_self: bool,
