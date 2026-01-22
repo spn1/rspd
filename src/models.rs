@@ -15,7 +15,7 @@ pub struct Listing<T> {
 /// The data returned, with pagination fields
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ListingData<T> {
-    after: Option<String>,
+    pub after: Option<String>,
     before: Option<String>,
     pub children: Vec<Thing<T>>,
 }
@@ -39,4 +39,5 @@ pub struct SavedPost {
     pub media_metadata: Option<Value>,
     pub secure_media: Option<Value>, // videos
     pub is_self: bool,
+    pub title: String,
 }
