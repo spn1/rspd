@@ -1,5 +1,6 @@
 use crate::models::SavedPost;
 use anyhow::Error;
+use futures::future;
 use sanitize_filename::sanitize;
 use std::path::{Path, PathBuf};
 
@@ -8,13 +9,25 @@ const SUPPORTED_IMAGE_EXTENSIONS: [&str; 5] = [".jpg", ".jpeg", ".png", ".gif", 
 
 /// Saves a list of posts to local directories
 pub async fn save_posts(posts: &Vec<SavedPost>) -> Result<(), Error> {
+    let mut tasks = Vec::new();
+
     for post in posts.iter() {
         if post.is_self {
             println!("{} is self post, skipping", post.id);
-        } else {
-            save_post(post, Path::new("saved")).await?;
+            continue;
         }
+
+        let post_clone = post.clone();
+        let task = tokio::spawn(async move {
+            if let Err(e) = save_post(&post_clone, Path::new("saved")).await {
+                eprintln!("Failed to save post {}: {}", post_clone.id, e);
+            }
+        });
+
+        tasks.push(task);
     }
+
+    future::join_all(tasks).await;
 
     Ok(())
 }

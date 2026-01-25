@@ -29,7 +29,7 @@ pub struct Thing<T> {
 }
 
 /// The content of the post.
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct SavedPost {
     pub id: String,
     pub subreddit: String,
