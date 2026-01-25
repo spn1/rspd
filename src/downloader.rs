@@ -1,5 +1,6 @@
 use crate::models::SavedPost;
 use anyhow::Error;
+use dirs::home_dir;
 use futures::future;
 use sanitize_filename::sanitize;
 use std::path::{Path, PathBuf};
@@ -10,6 +11,7 @@ const SUPPORTED_IMAGE_EXTENSIONS: [&str; 5] = [".jpg", ".jpeg", ".png", ".gif", 
 /// Saves a list of posts to local directories
 pub async fn save_posts(posts: &Vec<SavedPost>) -> Result<(), Error> {
     let mut tasks = Vec::new();
+    let target_dir = home_dir().unwrap_or(PathBuf::new()).join("Reddit");
 
     for post in posts.iter() {
         if post.is_self {
@@ -18,8 +20,9 @@ pub async fn save_posts(posts: &Vec<SavedPost>) -> Result<(), Error> {
         }
 
         let post_clone = post.clone();
+        let target_dir_clone = target_dir.clone();
         let task = tokio::spawn(async move {
-            if let Err(e) = save_post(&post_clone, Path::new("saved")).await {
+            if let Err(e) = save_post(&post_clone, target_dir_clone.as_path()).await {
                 eprintln!("Failed to save post {}: {}", post_clone.id, e);
             }
         });
@@ -55,7 +58,7 @@ pub async fn handle_video(post: &SavedPost, target_dir: PathBuf) -> Result<(), E
     if let Some(video_info) = post
         .secure_media
         .as_ref()
-        .and_then((|sm| sm.get("reddit_video")))
+        .and_then(|sm| sm.get("reddit_video"))
     {
         if let Some(fallback_url) = video_info.get("fallback_url").and_then(|u| u.as_str()) {
             let media_filename = format!("{}.mp4", post.id);

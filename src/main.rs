@@ -52,6 +52,11 @@ async fn main() -> Result<(), Error> {
     // Parse command line arguments
     let args = Args::parse();
     let download_limit = args.download_imit;
+    let request_limit = if download_limit > 5 {
+        5
+    } else {
+        download_limit
+    };
 
     // Get Env Vars
     dotenv().ok();
@@ -66,7 +71,13 @@ async fn main() -> Result<(), Error> {
 
     // Fetch all posts
     let client = reqwest::Client::new();
-    let reddit_client = RedditClient::new(client, access_token, username, 5, download_limit);
+    let reddit_client = RedditClient::new(
+        client,
+        access_token,
+        username,
+        request_limit,
+        download_limit,
+    );
     let saved_posts = reddit_client.get_saved_posts().await?;
 
     // download fetched posts

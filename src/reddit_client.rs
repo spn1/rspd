@@ -36,7 +36,7 @@ impl RedditClient {
         let mut posts = Vec::new();
         let url = format!("https://oauth.reddit.com/user/{}/saved", self.username);
 
-        while (post_count < self.download_limit as usize) {
+        while post_count < self.download_limit as usize {
             let response = self.fetch_page(&url, &mut after).await?;
             let listing = response.json::<Listing<Value>>().await?;
 
