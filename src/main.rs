@@ -5,7 +5,7 @@ mod reddit_client;
 use anyhow::Error;
 use dotenvy::dotenv;
 use downloader::save_posts;
-use models::{SavedPost, TokenResponse};
+use models::TokenResponse;
 use reddit_client::RedditClient;
 use reqwest::header::USER_AGENT;
 // use serde_json::Value;
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Error> {
     let access_token = get_access_token(&client_id, &client_secret, &username, &password).await?;
 
     let client = reqwest::Client::new();
-    let reddit_client = RedditClient::new(client, access_token, username);
+    let reddit_client = RedditClient::new(client, access_token, username, 1, 10);
     let saved_posts = reddit_client.get_saved_posts().await?;
 
     save_posts(&saved_posts).await?;
