@@ -23,7 +23,7 @@ impl RedditClient {
 
     /// Gets user information using an access token
     pub async fn get_saved_posts(&self) -> Result<Vec<SavedPost>, Error> {
-        const MAX_POSTS_TO_DOWNLOAD: usize = 10;
+        const MAX_POSTS_TO_DOWNLOAD: usize = 5;
         let mut post_count: usize = 0;
         let mut after = String::new();
         let mut posts = Vec::new();

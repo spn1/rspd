@@ -62,12 +62,8 @@ pub async fn handle_gallery(post: &SavedPost, target_dir: PathBuf) -> Result<(),
                 if let Some(item_url) = item_data.get("s").and_then(|s| s.get("u")) {
                     if let Some(item_url_str) = item_url.as_str() {
                         let clean_url = item_url_str.replace("&amp;", "&");
-                        let extension = Path::new(&clean_url)
-                            .extension()
-                            .and_then(|s| s.to_str())
-                            .unwrap_or("jpg");
 
-                        let media_filename = format!("{}_gallery_{}.{}", post.id, count, extension);
+                        let media_filename = get_filename(&post, Some(count));
                         download_file(&clean_url, &target_dir.join(media_filename)).await?;
                         println!("Downloaded gallery image {} for post {}", count, post.id);
                         count += 1;
@@ -87,7 +83,7 @@ pub async fn handle_image(post: &SavedPost, target_dir: PathBuf) -> Result<(), E
         .any(|ext| post.url.ends_with(ext));
 
     if is_direct_image {
-        let filename = get_filename(post);
+        let filename = get_filename(post, None);
         let path = target_dir.join(filename);
         download_file(&post.url, &path).await?;
         println!("Downloaded: {}", post.id);
@@ -114,12 +110,16 @@ pub async fn download_file(url: &str, path: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-/// Returns a name for a saved post, composed of the post ID and the appropriate extension.
-pub fn get_filename(post: &SavedPost) -> String {
+/// Returns a name for a saved post, composed of the post ID, number if part of a gallery,
+/// and the appropriate extension.
+pub fn get_filename(post: &SavedPost, gallery_count: Option<usize>) -> String {
     let extension = Path::new(&post.url)
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("jpg");
 
-    format!("{}.{}", post.id, extension)
+    match gallery_count.is_some() {
+        true => format!("{}_{}.{}", post.id, gallery_count.unwrap(), extension),
+        false => format!("{}.{}", post.id, extension),
+    }
 }
