@@ -39,10 +39,6 @@ async fn get_access_token(
     Ok(response.access_token)
 }
 
-fn debug_posts(posts: &Vec<SavedPost>) {
-    println!("{:?}", posts);
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     dotenv().ok();
