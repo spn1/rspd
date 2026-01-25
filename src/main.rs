@@ -3,12 +3,20 @@ mod models;
 mod reddit_client;
 
 use anyhow::Error;
+use clap::Parser;
 use dotenvy::dotenv;
 use downloader::save_posts;
 use models::TokenResponse;
 use reddit_client::RedditClient;
 use reqwest::header::USER_AGENT;
-// use serde_json::Value;
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Number of previous saved posts to save.
+    #[arg(short, long, default_value_t = 10)]
+    download_imit: u16,
+}
 
 /// Gets an access token for the application and user account from reddit API
 async fn get_access_token(
@@ -41,6 +49,11 @@ async fn get_access_token(
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    // Parse command line arguments
+    let args = Args::parse();
+    let download_limit = args.download_imit;
+
+    // Get Env Vars
     dotenv().ok();
     let client_id = std::env::var("REDDIT_CLIENT_ID").expect("Missing REDDIT_CLIENT_ID");
     let client_secret =
@@ -48,12 +61,15 @@ async fn main() -> Result<(), Error> {
     let username = std::env::var("REDDIT_USERNAME").expect("Missing REDDIT_USERNAME");
     let password = std::env::var("REDDIT_PASSWORD").expect("Missing REDDIT_PASSWORD");
 
+    // Get reddit access token
     let access_token = get_access_token(&client_id, &client_secret, &username, &password).await?;
 
+    // Fetch all posts
     let client = reqwest::Client::new();
-    let reddit_client = RedditClient::new(client, access_token, username, 1, 10);
+    let reddit_client = RedditClient::new(client, access_token, username, 5, download_limit);
     let saved_posts = reddit_client.get_saved_posts().await?;
 
+    // download fetched posts
     save_posts(&saved_posts).await?;
 
     Ok(())
