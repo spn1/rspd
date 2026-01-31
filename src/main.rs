@@ -4,7 +4,6 @@ mod reddit_client;
 
 use anyhow::Error;
 use clap::Parser;
-use dotenvy::dotenv;
 use downloader::save_posts;
 use models::TokenResponse;
 use reddit_client::RedditClient;
@@ -15,7 +14,23 @@ use reqwest::header::USER_AGENT;
 struct Args {
     /// Number of previous saved posts to save.
     #[arg(short, long, default_value_t = 10)]
-    download_imit: u16,
+    download_limit: u16,
+
+    /// The Client ID for this reddit application
+    #[arg(long)]
+    reddit_client_id: String,
+
+    /// The Client Secret for this reddit application
+    #[arg(long)]
+    reddit_client_secret: String,
+
+    /// Your reddit username
+    #[arg(long)]
+    reddit_username: String,
+
+    /// Your reddit password
+    #[arg(long)]
+    reddit_password: String,
 }
 
 /// Gets an access token for the application and user account from reddit API
@@ -49,35 +64,19 @@ async fn get_access_token(
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // Parse command line arguments
     let args = Args::parse();
-    let download_limit = args.download_imit;
-    let request_limit = if download_limit > 5 {
-        5
-    } else {
-        download_limit
-    };
-
-    // Get Env Vars
-    dotenv().ok();
-    let client_id = std::env::var("REDDIT_CLIENT_ID").expect("Missing REDDIT_CLIENT_ID");
-    let client_secret =
-        std::env::var("REDDIT_CLIENT_SECRET").expect("Missing REDDIT_CLIENT_SECRET");
-    let username = std::env::var("REDDIT_USERNAME").expect("Missing REDDIT_USERNAME");
-    let password = std::env::var("REDDIT_PASSWORD").expect("Missing REDDIT_PASSWORD");
 
     // Get reddit access token
-    let access_token = get_access_token(&client_id, &client_secret, &username, &password).await?;
+    let access_token = get_access_token(
+        &args.reddit_client_id,
+        &args.reddit_client_secret,
+        &args.reddit_username,
+        &args.reddit_password,
+    )
+    .await?;
 
     // Fetch all posts
-    let client = reqwest::Client::new();
-    let reddit_client = RedditClient::new(
-        client,
-        access_token,
-        username,
-        request_limit,
-        download_limit,
-    );
+    let reddit_client = RedditClient::new(access_token, args.reddit_username, args.download_limit);
     let saved_posts = reddit_client.get_saved_posts().await?;
 
     // download fetched posts

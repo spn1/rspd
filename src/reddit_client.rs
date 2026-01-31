@@ -3,6 +3,8 @@ use serde_json::Value;
 
 use crate::models::{Listing, SavedPost};
 
+const DEFAULT_PAGE: u16 = 10;
+
 /// A client through which posts are requested
 pub struct RedditClient {
     pub client: Client,
@@ -13,13 +15,15 @@ pub struct RedditClient {
 }
 
 impl RedditClient {
-    pub fn new(
-        client: Client,
-        token: String,
-        username: String,
-        page_limit: u16,
-        download_limit: u16,
-    ) -> Self {
+    pub fn new(token: String, username: String, download_limit: u16) -> Self {
+        let client = reqwest::Client::new();
+
+        let page_limit = if download_limit > DEFAULT_PAGE {
+            DEFAULT_PAGE
+        } else {
+            download_limit
+        };
+
         Self {
             client,
             token,
