@@ -41,17 +41,17 @@ impl RedditClient {
         let url = format!("https://oauth.reddit.com/user/{}/saved", self.username);
 
         while post_count < self.download_limit as usize {
-            let response = self.fetch_page(&url, &mut after).await?;
+            let response = self.fetch_page(&url, &mut after, post_count).await?;
             let listing = response.json::<Listing<Value>>().await?;
 
             after = listing.data.after.unwrap();
             post_count += listing.data.children.len();
 
-            for child in listing.data.children {
+            for child in listing.data.children.into_iter() {
                 if child.kind == "t3" {
                     match serde_json::from_value::<SavedPost>(child.data) {
                         Ok(post) => {
-                            println!("Fetched {} - {}", post.id, post.title);
+                            println!("Fetched {}--{} - {}", posts.len() + 1, post.id, post.title);
                             posts.push(post);
                         }
                         Err(error) => {
@@ -65,11 +65,25 @@ impl RedditClient {
         Ok(posts)
     }
 
-    async fn fetch_page(&self, url: &str, after: &str) -> Result<Response, Error> {
+    async fn fetch_page(
+        &self,
+        url: &str,
+        after: &str,
+        post_count: usize,
+    ) -> Result<Response, Error> {
+        let download_limit = self.download_limit as usize;
+        let page_limit = self.page_limit as usize;
+
+        let limit = if (post_count + page_limit) <= download_limit {
+            page_limit
+        } else {
+            download_limit - post_count
+        };
+
         self.client
             .get(url)
-            .header(USER_AGENT, "rspd-script/0.1 by neckbird")
-            .query(&[("limit", &self.page_limit.to_string())])
+            .header(USER_AGENT, "rspd-script/0.1 by spencer")
+            .query(&[("limit", &limit.to_string())])
             .query(&[("after", after)])
             .bearer_auth(&self.token)
             .send()
