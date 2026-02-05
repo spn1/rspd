@@ -54,11 +54,11 @@ impl RedditClient {
                 if child.kind == "t3" {
                     match serde_json::from_value::<SavedPost>(child.data) {
                         Ok(post) => {
-                            println!("Fetched {}--{} - {}", posts.len() + 1, post.id, post.title);
+                            println!("[RedditClient] Fetched {}--{} - {}", posts.len() + 1, post.id, post.title);
                             posts.push(post);
                         }
                         Err(error) => {
-                            eprintln!("Failed to parse t3 saved item: {error}")
+                            eprintln!("[RedditClient] Failed to parse t3 saved item: {error}")
                         }
                     }
                 }

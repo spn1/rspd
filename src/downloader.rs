@@ -15,7 +15,7 @@ pub async fn save_posts(posts: &Vec<SavedPost>) -> Result<(), Error> {
 
     for post in posts.iter() {
         if post.is_self {
-            println!("{} is self post, skipping", post.id);
+            println!("[Downloader] {} is self post, skipping", post.id);
             continue;
         }
 
@@ -23,7 +23,7 @@ pub async fn save_posts(posts: &Vec<SavedPost>) -> Result<(), Error> {
         let target_dir_clone = target_dir.clone();
         let task = tokio::spawn(async move {
             if let Err(e) = save_post(&post_clone, target_dir_clone.as_path()).await {
-                eprintln!("Failed to save post {}: {}", post_clone.id, e);
+                eprintln!("[Downloader] Failed to save post {}: {}", post_clone.id, e);
             }
         });
 
@@ -81,7 +81,7 @@ pub async fn handle_gallery(post: &SavedPost, target_dir: PathBuf) -> Result<(),
 
                         let media_filename = get_filename(&post, Some(count));
                         download_file(&clean_url, &target_dir.join(media_filename)).await?;
-                        println!("Downloaded gallery image {} for post {}", count, post.id);
+                        println!("[Downloader] Downloaded gallery image {} for post {}", count, post.id);
                         count += 1;
                     }
                 }
@@ -102,7 +102,7 @@ pub async fn handle_image(post: &SavedPost, target_dir: PathBuf) -> Result<(), E
         let filename = get_filename(post, None);
         let path = target_dir.join(filename);
         download_file(&post.url, &path).await?;
-        println!("Downloaded: {}", post.id);
+        println!("[Downloader] Downloaded: {}", post.id);
     }
 
     Ok(())
