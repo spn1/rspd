@@ -1,5 +1,6 @@
 mod downloader;
 mod models;
+mod rate_limiter;
 mod reddit_client;
 
 use anyhow::Error;

@@ -2,6 +2,7 @@ use reqwest::{Client, Error, Response, header::USER_AGENT};
 use serde_json::Value;
 
 use crate::models::{Listing, SavedPost};
+use crate::rate_limiter::RateLimiter;
 
 const DEFAULT_PAGE: u16 = 10;
 
@@ -12,6 +13,7 @@ pub struct RedditClient {
     pub username: String,
     pub page_limit: u16,
     pub download_limit: u16,
+    rate_limiter: RateLimiter,
 }
 
 impl RedditClient {
@@ -30,6 +32,7 @@ impl RedditClient {
             username,
             page_limit,
             download_limit,
+            rate_limiter: RateLimiter::new(),
         }
     }
 
@@ -80,13 +83,20 @@ impl RedditClient {
             download_limit - post_count
         };
 
-        self.client
+        self.rate_limiter.wait().await;
+
+        let request = self
+            .client
             .get(url)
             .header(USER_AGENT, "rspd-script/0.1 by spencer")
             .query(&[("limit", &limit.to_string())])
             .query(&[("after", after)])
-            .bearer_auth(&self.token)
-            .send()
-            .await
+            .bearer_auth(&self.token);
+
+        let response = request.send().await?;
+
+        self.rate_limiter.update(response.headers());
+
+        Ok(response)
     }
 }
